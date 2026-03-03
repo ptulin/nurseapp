@@ -6,6 +6,7 @@ import {
 } from "./core.js";
 import { parseScheduleText } from "./importer.js";
 import { runtimeConfig } from "./runtime-config.js";
+import { computeDashboardMetrics } from "./metrics.js";
 import { createDataAdapter } from "./data/index.js";
 import {
   getSession,
@@ -278,6 +279,21 @@ function renderImportPreview() {
   });
 }
 
+function renderKpis() {
+  const el = document.getElementById("kpiGrid");
+  if (!el) return;
+  const kpi = computeDashboardMetrics(state);
+  el.className = "kpi-grid";
+  el.innerHTML = `
+    <div class="kpi-item"><span class="meta">Total Tasks</span><strong>${kpi.totalTasks}</strong></div>
+    <div class="kpi-item"><span class="meta">Open Tasks</span><strong>${kpi.openTasks}</strong></div>
+    <div class="kpi-item"><span class="meta">Done Rate</span><strong>${kpi.doneRate}%</strong></div>
+    <div class="kpi-item"><span class="meta">Missed Rate</span><strong>${kpi.missedRate}%</strong></div>
+    <div class="kpi-item"><span class="meta">Avg Ack Delay</span><strong>${kpi.avgAckMin} min</strong></div>
+    <div class="kpi-item"><span class="meta">Role Switches</span><strong>${kpi.roleSwitches}</strong></div>
+  `;
+}
+
 function renderRoleScreens() {
   const allowed = new Set(state.allowedScreens || []);
   const sections = document.querySelectorAll("[data-screen]");
@@ -306,6 +322,7 @@ function renderAll() {
   renderAlerts();
   renderChat();
   renderImportPreview();
+  renderKpis();
   renderAuthStatus();
 }
 

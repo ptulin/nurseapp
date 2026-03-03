@@ -29,6 +29,6 @@
 
 ## Phase 4: Pilot and Launch
 
-- [ ] Pilot onboarding script (10-20 families)
-- [ ] Retention instrumentation dashboard
-- [ ] Launch docs and support workflows
+- [x] Pilot playbook (10-20 families)
+- [x] Retention/ops KPI dashboard scaffold in-app
+- [x] Launch checklist and support workflow docs

@@ -41,6 +41,8 @@ Open `http://127.0.0.1:8788`.
 - `docs/FREE_RESOURCES.md`: free stack/options
 - `docs/CONNECTIONS_AUDIT.md`: reusable connection patterns from other projects
 - `docs/SUPABASE_SETUP.md`: optional free-tier shared cloud setup
+- `docs/PILOT_PLAYBOOK.md`: pilot execution framework
+- `docs/LAUNCH_CHECKLIST.md`: launch readiness checklist
 - `supabase/migrations/*.sql`: schema and starter RLS policies
 
 ## Notes
