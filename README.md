@@ -15,6 +15,8 @@ Mobile-first web app for caregiver-family coordination.
 - OCR-text import scaffold (preview and apply)
 - Local audit log with JSON export
 - Supabase auth scaffold (email/password + household bootstrap)
+- Supabase realtime refresh scaffold (polling)
+- Image guardrails (image-only, 2MB max upload)
 - Local-first mode (no paid services required)
 
 ## Run Locally (Free)

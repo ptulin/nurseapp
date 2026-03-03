@@ -4,6 +4,7 @@ export const DEFAULT_SETTINGS = {
   escalateTasksMinutes: 15,
   escalateNotesMinutes: 30,
 };
+export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export const ROLE_SCREENS = {
   Family: ["today", "overview", "missed", "chat", "settings"],
@@ -47,4 +48,15 @@ export function buildEscalationContact(chain, primaryId) {
     primary: primary || chain[0] || null,
     backups,
   };
+}
+
+export function validateImageFile(file, maxBytes = MAX_IMAGE_BYTES) {
+  if (!file) return { ok: true, reason: "" };
+  if (!file.type?.startsWith("image/")) {
+    return { ok: false, reason: "Only image files are allowed" };
+  }
+  if (file.size > maxBytes) {
+    return { ok: false, reason: `Image must be <= ${Math.round(maxBytes / (1024 * 1024))}MB` };
+  }
+  return { ok: true, reason: "" };
 }

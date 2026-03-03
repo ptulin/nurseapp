@@ -7,6 +7,7 @@ import {
   validateTaskInput,
   buildEscalationContact,
   ROLE_SCREENS,
+  validateImageFile,
 } from "../src/core.js";
 
 test("shouldEscalate returns true after threshold", () => {
@@ -56,4 +57,9 @@ test("buildEscalationContact returns primary + backups", () => {
   assert.equal(out.primary.id, "b");
   assert.equal(out.backups.length, 1);
   assert.equal(out.backups[0].id, "a");
+});
+
+test("validateImageFile rejects oversized image", () => {
+  const out = validateImageFile({ type: "image/png", size: 3 * 1024 * 1024 });
+  assert.equal(out.ok, false);
 });

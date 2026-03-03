@@ -17,8 +17,8 @@
 - [x] Supabase auth integration scaffold (email/password + bootstrap RPC)
 - [x] Postgres schema + migration scripts
 - [x] Row-level security policies by role and recipient
-- [ ] Realtime updates for timeline/chat/alerts
-- [ ] Image storage hard limits and retention
+- [x] Realtime refresh scaffold (Supabase polling every 20s)
+- [x] Image size/type limits in UI flows (2MB images only)
 
 ## Phase 3: Care Ops Depth
 

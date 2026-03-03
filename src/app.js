@@ -1,6 +1,7 @@
 import {
   shouldEscalate,
   validateTaskInput,
+  validateImageFile,
   withRole,
 } from "./core.js";
 import { parseScheduleText } from "./importer.js";
@@ -16,6 +17,7 @@ import {
 const adapter = createDataAdapter(runtimeConfig);
 let state = null;
 let importPreview = [];
+let syncTimer = null;
 
 function ensureStateDefaults(input) {
   return {
@@ -71,6 +73,21 @@ function readAuthInputs() {
     email: document.getElementById("authEmail")?.value?.trim(),
     password: document.getElementById("authPassword")?.value || "",
   };
+}
+
+function startRealtimeSync() {
+  if (syncTimer || adapter.mode !== "supabase") return;
+  syncTimer = setInterval(async () => {
+    try {
+      if (!getSession()?.access_token) return;
+      const remote = await adapter.loadState();
+      if (!remote) return;
+      state = withRole(ensureStateDefaults(remote), state.role || remote.role || "Family");
+      renderAll();
+    } catch {
+      // Keep local UI active if cloud refresh fails.
+    }
+  }, 20000);
 }
 
 function renderAuthStatus() {
@@ -375,6 +392,11 @@ function wireEvents() {
       saveMessage(null);
       return;
     }
+    const fileCheck = validateImageFile(file);
+    if (!fileCheck.ok) {
+      setAuthStatus(fileCheck.reason);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => saveMessage(reader.result);
@@ -397,6 +419,12 @@ function wireEvents() {
   document.getElementById("importForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const text = document.getElementById("importText").value;
+    const imageFile = document.getElementById("importImage").files?.[0];
+    const fileCheck = validateImageFile(imageFile);
+    if (!fileCheck.ok) {
+      setAuthStatus(fileCheck.reason);
+      return;
+    }
     importPreview = parseScheduleText(text);
     logAction("import.preview", { count: importPreview.length });
     renderImportPreview();
@@ -534,6 +562,7 @@ async function init() {
   const loaded = await adapter.loadState();
   state = withRole(ensureStateDefaults(loaded), loaded.role || "Family");
   wireEvents();
+  startRealtimeSync();
   renderAll();
 }
 
