@@ -92,7 +92,21 @@
         <label><input id="alertsEnabled" type="checkbox" checked /> Immediate alerts enabled</label>
         <label>Meds/task escalation minutes <input id="medTaskMins" type="number" min="1" value="15" /></label>
         <label>Note escalation minutes <input id="noteMins" type="number" min="1" value="30" /></label>
+        <label><input id="channelInApp" type="checkbox" checked /> In-app alerts</label>
+        <label><input id="channelEmail" type="checkbox" /> Email alerts (simulated)</label>
+        <label><input id="channelSms" type="checkbox" /> SMS alerts (simulated)</label>
         <button id="saveSettings">Save settings</button>
+      </section>
+
+      <section class="card" data-screen="settings">
+        <h2>Plan</h2>
+        <label>Current plan
+          <select id="planTier">
+            <option value="free">Free</option>
+            <option value="pro">Pro ($9-15)</option>
+          </select>
+        </label>
+        <div id="planSummary" class="meta"></div>
       </section>
 
       <section class="card" data-screen="overview">
@@ -131,6 +145,11 @@
         <p class="meta">Local audit log for key actions.</p>
         <button id="exportAudit" type="button">Export audit JSON</button>
         <div id="auditCount" class="meta"></div>
+      </section>
+
+      <section class="card" data-screen="missed">
+        <h2>Alert Delivery Center</h2>
+        <div id="deliveryLog"></div>
       </section>
     </main>
 

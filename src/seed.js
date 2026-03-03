@@ -28,7 +28,18 @@ export function createSeedState() {
       },
     ],
     chat: [],
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      ...DEFAULT_SETTINGS,
+      alertChannels: {
+        inApp: true,
+        email: false,
+        sms: false,
+      },
+    },
+    billing: {
+      tier: "free",
+    },
+    alertDeliveries: [],
     escalationChain: [
       { id: "p1", name: "Primary Contact", isPrimary: true },
       { id: "b1", name: "Backup Contact", isPrimary: false },

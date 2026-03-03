@@ -9,6 +9,11 @@ import { runtimeConfig } from "./runtime-config.js";
 import { computeDashboardMetrics } from "./metrics.js";
 import { createDataAdapter } from "./data/index.js";
 import {
+  canAddRecipient,
+  getPlanLimits,
+  sanitizeChannelsForTier,
+} from "./plans.js";
+import {
   getSession,
   signInWithEmail,
   signOut,
@@ -21,8 +26,18 @@ let importPreview = [];
 let syncTimer = null;
 
 function ensureStateDefaults(input) {
+  const tier = input?.billing?.tier || "free";
+  const channels = sanitizeChannelsForTier(tier, input?.settings?.alertChannels || { inApp: true });
   return {
     ...input,
+    settings: {
+      ...input.settings,
+      alertChannels: channels,
+    },
+    billing: {
+      tier,
+    },
+    alertDeliveries: Array.isArray(input.alertDeliveries) ? input.alertDeliveries : [],
     audit: Array.isArray(input.audit) ? input.audit : [],
   };
 }
@@ -208,6 +223,7 @@ function renderAlerts() {
       minutes: typeMinutes,
     });
   });
+  ensureDeliveryRecords(active);
 
   if (active.length === 0) {
     el.textContent = "No escalated alerts.";
@@ -229,6 +245,7 @@ function renderAlerts() {
     ack.textContent = "Acknowledge";
     ack.onclick = () => {
       task.acknowledgedAt = new Date().toISOString();
+      acknowledgeDeliveryForTask(task.id);
       logAction("alert.ack", { taskId: task.id });
       persistAndRender();
     };
@@ -279,6 +296,64 @@ function renderImportPreview() {
   });
 }
 
+function ensureDeliveryRecords(activeTasks) {
+  const channels = state.settings.alertChannels || { inApp: true };
+  const enabled = Object.keys(channels).filter((k) => channels[k]);
+
+  activeTasks.forEach((task) => {
+    enabled.forEach((channel) => {
+      const exists = state.alertDeliveries.some(
+        (d) => d.taskId === task.id && d.channel === channel && d.status === "sent"
+      );
+      if (exists) return;
+      state.alertDeliveries.push({
+        id: crypto.randomUUID(),
+        taskId: task.id,
+        title: task.title,
+        channel,
+        status: "sent",
+        sentAt: new Date().toISOString(),
+        acknowledgedAt: null,
+      });
+    });
+  });
+}
+
+function acknowledgeDeliveryForTask(taskId) {
+  state.alertDeliveries.forEach((d) => {
+    if (d.taskId === taskId && d.status === "sent") {
+      d.status = "acknowledged";
+      d.acknowledgedAt = new Date().toISOString();
+    }
+  });
+}
+
+function renderDeliveryLog() {
+  const el = document.getElementById("deliveryLog");
+  if (!el) return;
+  el.innerHTML = "";
+
+  const rows = [...state.alertDeliveries]
+    .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))
+    .slice(0, 20);
+
+  if (rows.length === 0) {
+    el.textContent = "No alert deliveries yet.";
+    return;
+  }
+
+  rows.forEach((d) => {
+    const row = document.createElement("div");
+    row.className = "delivery-item";
+    row.innerHTML = `
+      <strong>${d.title}</strong>
+      <div class="meta">Channel: ${d.channel} | Status: ${d.status}</div>
+      <div class="meta">Sent: ${formatTime(d.sentAt)}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
 function renderKpis() {
   const el = document.getElementById("kpiGrid");
   if (!el) return;
@@ -314,12 +389,20 @@ function renderAll() {
   document.getElementById("alertsEnabled").checked = state.settings.alertsEnabled;
   document.getElementById("medTaskMins").value = state.settings.escalateTasksMinutes;
   document.getElementById("noteMins").value = state.settings.escalateNotesMinutes;
+  document.getElementById("channelInApp").checked = Boolean(state.settings.alertChannels?.inApp);
+  document.getElementById("channelEmail").checked = Boolean(state.settings.alertChannels?.email);
+  document.getElementById("channelSms").checked = Boolean(state.settings.alertChannels?.sms);
+  document.getElementById("planTier").value = state.billing.tier;
+  const limits = getPlanLimits(state.billing.tier);
+  document.getElementById("planSummary").textContent =
+    `Recipient limit: ${limits.maxRecipients}. Channels: ${limits.channels.join(", ")}.`;
   document.getElementById("auditCount").textContent = `Entries: ${state.audit.length}`;
 
   renderRoleScreens();
   renderRecipients();
   renderTimeline();
   renderAlerts();
+  renderDeliveryLog();
   renderChat();
   renderImportPreview();
   renderKpis();
@@ -335,6 +418,10 @@ function wireEvents() {
 
   document.getElementById("recipientForm").addEventListener("submit", (e) => {
     e.preventDefault();
+    if (!canAddRecipient(state)) {
+      setAuthStatus("Plan limit reached. Upgrade to Pro for more recipients.");
+      return;
+    }
     const input = document.getElementById("recipientName");
     const name = input.value.trim();
     if (!name) return;
@@ -425,11 +512,24 @@ function wireEvents() {
     state.settings.escalateTasksMinutes = Number(document.getElementById("medTaskMins").value) || 15;
     state.settings.escalateMedsMinutes = state.settings.escalateTasksMinutes;
     state.settings.escalateNotesMinutes = Number(document.getElementById("noteMins").value) || 30;
+    state.settings.alertChannels = sanitizeChannelsForTier(state.billing.tier, {
+      inApp: document.getElementById("channelInApp").checked,
+      email: document.getElementById("channelEmail").checked,
+      sms: document.getElementById("channelSms").checked,
+    });
     logAction("settings.save", {
       alertsEnabled: state.settings.alertsEnabled,
       escalateTasksMinutes: state.settings.escalateTasksMinutes,
       escalateNotesMinutes: state.settings.escalateNotesMinutes,
+      alertChannels: state.settings.alertChannels,
     });
+    persistAndRender();
+  });
+
+  document.getElementById("planTier").addEventListener("change", (e) => {
+    state.billing.tier = e.target.value;
+    state.settings.alertChannels = sanitizeChannelsForTier(state.billing.tier, state.settings.alertChannels);
+    logAction("billing.plan_change", { tier: state.billing.tier });
     persistAndRender();
   });
 

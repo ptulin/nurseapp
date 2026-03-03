@@ -23,9 +23,9 @@
 ## Phase 3: Care Ops Depth
 
 - [x] OCR import flow scaffold (text parse preview -> review -> apply)
-- [ ] Alert delivery channels and acknowledgements
+- [x] Alert delivery channels and acknowledgements
 - [x] Audit logs and export for compliance evidence
-- [ ] Family plan billing (free + paid)
+- [x] Family plan billing model (free/pro feature gates)
 
 ## Phase 4: Pilot and Launch
 

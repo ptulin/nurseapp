@@ -17,6 +17,8 @@ Mobile-first web app for caregiver-family coordination.
 - Supabase auth scaffold (email/password + household bootstrap)
 - Supabase realtime refresh scaffold (polling)
 - Image guardrails (image-only, 2MB max upload)
+- Alert delivery center with channel tracking + acknowledgement
+- Free/Pro plan model with recipient/channel feature gates
 - Local-first mode (no paid services required)
 
 ## Run Locally (Free)
