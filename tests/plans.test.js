@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 
 import { canAddRecipient, sanitizeChannelsForTier } from "../src/plans.js";
 
-test("free plan caps recipients to one", () => {
+test("free plan allows adding recipients", () => {
   const state = {
     billing: { tier: "free" },
     recipients: [{ id: "a" }],
   };
-  assert.equal(canAddRecipient(state), false);
+  assert.equal(canAddRecipient(state), true);
 });
 
 test("free plan strips paid channels", () => {

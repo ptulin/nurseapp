@@ -1,6 +1,6 @@
 export const PLAN_LIMITS = {
   free: {
-    maxRecipients: 1,
+    maxRecipients: 50,
     channels: ["inApp"],
     advancedEscalation: false,
   },
