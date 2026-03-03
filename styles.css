@@ -26,6 +26,11 @@ body {
 .topbar h1 { margin: 0; font-size: 1.3rem; }
 .topbar p { margin: 4px 0 0; color: #d2def4; font-size: 0.85rem; }
 .role-switch { display: grid; gap: 6px; }
+.topbar p.notice { margin-top: 6px; font-size: 0.82rem; }
+.topbar p.notice.info { color: #b7d2ff; }
+.topbar p.notice.success { color: #9ef5c6; }
+.topbar p.notice.warn { color: #ffd58d; }
+.topbar p.notice.error { color: #ffb5bf; }
 
 .layout {
   display: grid;
@@ -44,7 +49,8 @@ body {
 .card h2 { margin: 4px 0 10px; font-size: 1.05rem; }
 [data-hidden="true"] { display: none; }
 .inline-form { display: flex; gap: 8px; }
-.inline-form input { flex: 1; }
+.inline-form input { flex: 1; min-width: 0; }
+.inline-form button { width: auto; flex: 0 0 auto; padding-inline: 16px; }
 
 input, select, textarea, button {
   width: 100%;
@@ -57,9 +63,19 @@ button {
   background: var(--accent);
   color: #fff;
   border: none;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+.ghost-btn {
+  width: auto;
+  margin-top: 8px;
+  background: #edf3ff;
+  color: #123564;
+  border: 1px solid #bfd4ff;
 }
 label { display: grid; gap: 6px; margin-bottom: 8px; }
 .meta { color: var(--muted); font-size: 0.85rem; }
+input[type="checkbox"] { width: auto; }
 
 .recipient-list {
   display: flex;
@@ -99,6 +115,7 @@ label { display: grid; gap: 6px; margin-bottom: 8px; }
 .status.missed { background: #fee2e2; color: var(--danger); }
 
 .timeline-actions { display: flex; gap: 8px; margin-top: 8px; }
+.timeline-actions button { width: auto; flex: 1; }
 .timeline-actions button.secondary { background: #6d7f98; }
 .alert-item.high { border-color: #fcc7cf; background: #fff8f8; }
 .chat-log img { width: 140px; border-radius: 8px; margin-top: 8px; }

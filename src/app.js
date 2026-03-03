@@ -25,6 +25,19 @@ let state = null;
 let importPreview = [];
 let syncTimer = null;
 
+function setAppNotice(message, level = "info") {
+  const el = document.getElementById("appNotice");
+  if (!el) return;
+  el.textContent = message;
+  el.className = `notice ${level}`;
+}
+
+function setRecipientFeedback(message = "") {
+  const el = document.getElementById("recipientFeedback");
+  if (!el) return;
+  el.textContent = message;
+}
+
 function ensureStateDefaults(input) {
   const tier = input?.billing?.tier || "free";
   const channels = sanitizeChannelsForTier(tier, input?.settings?.alertChannels || { inApp: true });
@@ -137,6 +150,21 @@ function renderRecipients() {
     };
     container.appendChild(btn);
   });
+}
+
+function renderRecipientControls() {
+  const addBtn = document.getElementById("addRecipientBtn");
+  const upgradeBtn = document.getElementById("upgradePlanBtn");
+  const canAdd = canAddRecipient(state);
+  const limits = getPlanLimits(state.billing.tier);
+  if (addBtn) addBtn.disabled = !canAdd;
+  if (upgradeBtn) upgradeBtn.style.display = canAdd ? "none" : "inline-block";
+
+  if (canAdd) {
+    setRecipientFeedback(`You can add ${limits.maxRecipients - state.recipients.length} more recipient(s) on ${state.billing.tier.toUpperCase()} plan.`);
+  } else {
+    setRecipientFeedback(`Limit reached on ${state.billing.tier.toUpperCase()} plan (${limits.maxRecipients} recipient).`);
+  }
 }
 
 function renderTimeline() {
@@ -400,6 +428,7 @@ function renderAll() {
 
   renderRoleScreens();
   renderRecipients();
+  renderRecipientControls();
   renderTimeline();
   renderAlerts();
   renderDeliveryLog();
@@ -418,19 +447,26 @@ function wireEvents() {
 
   document.getElementById("recipientForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!canAddRecipient(state)) {
-      setAuthStatus("Plan limit reached. Upgrade to Pro for more recipients.");
-      return;
-    }
     const input = document.getElementById("recipientName");
     const name = input.value.trim();
-    if (!name) return;
+    if (!name) {
+      setRecipientFeedback("Enter a name before adding.");
+      setAppNotice("Recipient name is required.", "warn");
+      return;
+    }
+    if (!canAddRecipient(state)) {
+      setRecipientFeedback("Plan limit reached. Upgrade to Pro to add more recipients.");
+      setAppNotice("Add blocked by current plan limit.", "warn");
+      return;
+    }
     const color = `hsl(${Math.floor(Math.random() * 360)}, 85%, 90%)`;
     const recipient = { id: crypto.randomUUID(), name, color };
     state.recipients.push(recipient);
     state.activeRecipientId = recipient.id;
     input.value = "";
     logAction("recipient.add", { recipientId: recipient.id });
+    setRecipientFeedback(`Added ${name}.`);
+    setAppNotice("Recipient added successfully.", "success");
     persistAndRender();
   });
 
@@ -449,6 +485,7 @@ function wireEvents() {
     const check = validateTaskInput(payload);
     if (!check.ok) {
       window.alert(check.errors.join("\n"));
+      setAppNotice("Task could not be saved. Fix required fields.", "warn");
       return;
     }
 
@@ -465,6 +502,7 @@ function wireEvents() {
     state.tasks.push(created);
     logAction("task.add", { taskId: created.id });
     e.target.reset();
+    setAppNotice("Task saved.", "success");
     persistAndRender();
   });
 
@@ -498,7 +536,7 @@ function wireEvents() {
     }
     const fileCheck = validateImageFile(file);
     if (!fileCheck.ok) {
-      setAuthStatus(fileCheck.reason);
+      setAppNotice(fileCheck.reason, "warn");
       return;
     }
 
@@ -523,6 +561,7 @@ function wireEvents() {
       escalateNotesMinutes: state.settings.escalateNotesMinutes,
       alertChannels: state.settings.alertChannels,
     });
+    setAppNotice("Settings saved.", "success");
     persistAndRender();
   });
 
@@ -530,6 +569,15 @@ function wireEvents() {
     state.billing.tier = e.target.value;
     state.settings.alertChannels = sanitizeChannelsForTier(state.billing.tier, state.settings.alertChannels);
     logAction("billing.plan_change", { tier: state.billing.tier });
+    setAppNotice(`Plan changed to ${state.billing.tier.toUpperCase()}.`, "info");
+    persistAndRender();
+  });
+
+  document.getElementById("upgradePlanBtn").addEventListener("click", () => {
+    state.billing.tier = "pro";
+    state.settings.alertChannels = sanitizeChannelsForTier("pro", state.settings.alertChannels);
+    logAction("billing.plan_change", { tier: "pro", source: "recipient_card" });
+    setAppNotice("Upgraded to PRO plan in local mode.", "success");
     persistAndRender();
   });
 
@@ -539,11 +587,12 @@ function wireEvents() {
     const imageFile = document.getElementById("importImage").files?.[0];
     const fileCheck = validateImageFile(imageFile);
     if (!fileCheck.ok) {
-      setAuthStatus(fileCheck.reason);
+      setAppNotice(fileCheck.reason, "warn");
       return;
     }
     importPreview = parseScheduleText(text);
     logAction("import.preview", { count: importPreview.length });
+    setAppNotice(`Import preview ready (${importPreview.length} items).`, "info");
     renderImportPreview();
   });
 
@@ -572,6 +621,7 @@ function wireEvents() {
     importPreview = [];
     document.getElementById("importText").value = "";
     document.getElementById("importImage").value = "";
+    setAppNotice(`Imported ${created.length} items into timeline.`, "success");
     persistAndRender();
   });
 
@@ -583,16 +633,19 @@ function wireEvents() {
     a.download = `nurseapp-audit-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setAppNotice("Audit exported.", "success");
   });
 
   document.getElementById("signUpBtn").addEventListener("click", async () => {
     if (adapter.mode !== "supabase") {
       setAuthStatus("Switch runtime config to supabase mode first.");
+      setAppNotice("Auth action unavailable in local mode.", "warn");
       return;
     }
     const { email, password } = readAuthInputs();
     if (!email || !password) {
       setAuthStatus("Email and password are required.");
+      setAppNotice("Email and password are required.", "warn");
       return;
     }
     try {
@@ -604,20 +657,24 @@ function wireEvents() {
       });
       logAction("auth.signup", { email });
       setAuthStatus("Sign-up successful. Check email if confirmation is required.");
+      setAppNotice("Sign-up successful.", "success");
       renderAuthStatus();
     } catch (error) {
       setAuthStatus(`Sign-up failed: ${error.message}`);
+      setAppNotice("Sign-up failed.", "error");
     }
   });
 
   document.getElementById("signInBtn").addEventListener("click", async () => {
     if (adapter.mode !== "supabase") {
       setAuthStatus("Switch runtime config to supabase mode first.");
+      setAppNotice("Auth action unavailable in local mode.", "warn");
       return;
     }
     const { email, password } = readAuthInputs();
     if (!email || !password) {
       setAuthStatus("Email and password are required.");
+      setAppNotice("Email and password are required.", "warn");
       return;
     }
     try {
@@ -629,6 +686,7 @@ function wireEvents() {
       });
       logAction("auth.signin", { email });
       setAuthStatus("Signed in.");
+      setAppNotice("Signed in.", "success");
       renderAuthStatus();
       const loaded = await adapter.loadState();
       state = withRole(ensureStateDefaults(loaded), loaded.role || state.role || "Family");
@@ -636,12 +694,14 @@ function wireEvents() {
       renderAll();
     } catch (error) {
       setAuthStatus(`Sign-in failed: ${error.message}`);
+      setAppNotice("Sign-in failed.", "error");
     }
   });
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {
     if (adapter.mode !== "supabase") {
       setAuthStatus("Already local mode.");
+      setAppNotice("Already in local mode.", "info");
       return;
     }
     try {
@@ -651,15 +711,18 @@ function wireEvents() {
       });
       logAction("auth.signout", {});
       setAuthStatus("Signed out.");
+      setAppNotice("Signed out.", "success");
       renderAuthStatus();
     } catch (error) {
       setAuthStatus(`Sign-out failed: ${error.message}`);
+      setAppNotice("Sign-out failed.", "error");
     }
   });
 
   document.getElementById("bootstrapBtn").addEventListener("click", async () => {
     if (adapter.mode !== "supabase") {
       setAuthStatus("Bootstrap requires supabase mode.");
+      setAppNotice("Bootstrap requires supabase mode.", "warn");
       return;
     }
     const name = document.getElementById("householdName")?.value?.trim() || "My Household";
@@ -667,10 +730,12 @@ function wireEvents() {
       const householdId = await adapter.bootstrapHousehold(name);
       runtimeConfig.supabase.householdId = householdId;
       setAuthStatus(`Household ready: ${householdId}`);
+      setAppNotice("Household bootstrap completed.", "success");
       logAction("auth.bootstrap_household", { householdId, householdName: name });
       await adapter.saveState(state);
     } catch (error) {
       setAuthStatus(`Bootstrap failed: ${error.message}`);
+      setAppNotice("Household bootstrap failed.", "error");
     }
   });
 }

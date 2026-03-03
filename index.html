@@ -12,6 +12,7 @@
         <h1>NurseApp</h1>
         <p>Care coordination for families and caregivers</p>
         <p id="dataMode"></p>
+        <p id="appNotice" class="notice info">Ready.</p>
       </div>
       <div class="role-switch">
         <label for="role">Role</label>
@@ -29,8 +30,10 @@
         <div id="recipientList" class="recipient-list"></div>
         <form id="recipientForm" class="inline-form">
           <input id="recipientName" placeholder="Add recipient name" required />
-          <button type="submit">Add</button>
+          <button id="addRecipientBtn" type="submit">Add Recipient</button>
         </form>
+        <div id="recipientFeedback" class="meta"></div>
+        <button id="upgradePlanBtn" type="button" class="ghost-btn">Upgrade to Pro</button>
       </section>
 
       <section class="card" data-screen="overview">
