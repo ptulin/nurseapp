@@ -1,66 +1,13 @@
 import {
-  DEFAULT_SETTINGS,
   shouldEscalate,
   validateTaskInput,
   withRole,
 } from "./core.js";
+import { runtimeConfig } from "./runtime-config.js";
+import { createDataAdapter } from "./data/index.js";
 
-const STORAGE_KEY = "nurseapp_mvp_state_v1";
-
-const seedNow = new Date();
-seedNow.setMinutes(seedNow.getMinutes() - 20);
-
-const seed = {
-  role: "Family",
-  recipients: [
-    { id: crypto.randomUUID(), name: "Recipient A", color: "#fee2e2" },
-  ],
-  activeRecipientId: null,
-  tasks: [
-    {
-      id: crypto.randomUUID(),
-      recipientId: "seed",
-      title: "Morning medication",
-      category: "Medication",
-      type: "med",
-      dueAt: seedNow.toISOString(),
-      status: "pending",
-      highRisk: true,
-      requiresSecondConfirm: true,
-      confirmedBySecond: false,
-      createdAt: new Date().toISOString(),
-      evidence: null,
-      acknowledgedAt: null,
-    },
-  ],
-  chat: [],
-  settings: { ...DEFAULT_SETTINGS },
-  escalationChain: [
-    { id: "p1", name: "Primary Contact", isPrimary: true },
-    { id: "b1", name: "Backup Contact", isPrimary: false },
-  ],
-};
-
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const s = structuredClone(seed);
-    s.tasks[0].recipientId = s.recipients[0].id;
-    s.activeRecipientId = s.recipients[0].id;
-    return s;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return structuredClone(seed);
-  }
-}
-
-let state = withRole(loadState(), loadState().role || "Family");
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
+const adapter = createDataAdapter(runtimeConfig);
+let state = null;
 
 function getActiveRecipient() {
   return state.recipients.find((r) => r.id === state.activeRecipientId) || state.recipients[0];
@@ -119,7 +66,7 @@ function renderTimeline() {
 
     const doneBtn = document.createElement("button");
     doneBtn.textContent = "Done + Evidence";
-    doneBtn.onclick = async () => {
+    doneBtn.onclick = () => {
       const note = window.prompt("Optional evidence note", "");
       const evidence = { note: note || null, at: new Date().toISOString() };
       task.status = "done";
@@ -225,12 +172,13 @@ function renderChat() {
   });
 }
 
-function persistAndRender() {
-  saveState();
+async function persistAndRender() {
+  await adapter.saveState(state);
   renderAll();
 }
 
 function renderAll() {
+  document.getElementById("dataMode").textContent = `Data mode: ${adapter.mode}`;
   document.getElementById("role").value = state.role;
   document.getElementById("alertsEnabled").checked = state.settings.alertsEnabled;
   document.getElementById("medTaskMins").value = state.settings.escalateTasksMinutes;
@@ -333,5 +281,11 @@ function wireEvents() {
   });
 }
 
-wireEvents();
-renderAll();
+async function init() {
+  const loaded = await adapter.loadState();
+  state = withRole(loaded, loaded.role || "Family");
+  wireEvents();
+  renderAll();
+}
+
+init();
