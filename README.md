@@ -12,6 +12,8 @@ Mobile-first web app for caregiver-family coordination.
 - Optional evidence on completion
 - Optional second confirmation for high-risk meds
 - In-app chat: text + photo
+- OCR-text import scaffold (preview and apply)
+- Local audit log with JSON export
 - Local-first mode (no paid services required)
 
 ## Run Locally (Free)
@@ -27,6 +29,7 @@ Open `http://127.0.0.1:8788`.
 
 - `index.html`, `styles.css`, `src/app.js`: MVP UI and behavior
 - `src/core.js`: testable core rules (alerts/validation/roles)
+- `src/importer.js`: OCR-text parsing utility for schedule import
 - `src/data/*`: data adapters (`local` + `supabase` with local fallback)
 - `src/runtime-config.js`: runtime mode selection
 - `tests/core.test.js`: unit tests

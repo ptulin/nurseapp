@@ -15,16 +15,16 @@
 ## Phase 2: Cloud Foundations (Next)
 
 - [ ] Supabase auth integration
-- [ ] Postgres schema + migration scripts
-- [ ] Row-level security policies by role and recipient
+- [x] Postgres schema + migration scripts
+- [x] Row-level security policies by role and recipient
 - [ ] Realtime updates for timeline/chat/alerts
 - [ ] Image storage hard limits and retention
 
 ## Phase 3: Care Ops Depth
 
-- [ ] OCR import flow (image -> extracted draft -> review)
+- [x] OCR import flow scaffold (text parse preview -> review -> apply)
 - [ ] Alert delivery channels and acknowledgements
-- [ ] Audit logs and export for compliance evidence
+- [x] Audit logs and export for compliance evidence
 - [ ] Family plan billing (free + paid)
 
 ## Phase 4: Pilot and Launch

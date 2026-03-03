@@ -24,7 +24,7 @@
     </header>
 
     <main class="layout">
-      <section class="card recipients">
+      <section class="card recipients" data-screen="overview">
         <h2>Care Recipients</h2>
         <div id="recipientList" class="recipient-list"></div>
         <form id="recipientForm" class="inline-form">
@@ -33,12 +33,12 @@
         </form>
       </section>
 
-      <section class="card timeline">
+      <section class="card timeline" data-screen="today">
         <h2>Today Timeline</h2>
         <div id="timeline"></div>
       </section>
 
-      <section class="card form">
+      <section class="card form" data-screen="today">
         <h2>Add Plan-Driven Task</h2>
         <form id="taskForm">
           <label>Title <input id="taskTitle" required /></label>
@@ -67,12 +67,12 @@
         </form>
       </section>
 
-      <section class="card alerts">
+      <section class="card alerts" data-screen="missed">
         <h2>Alerts</h2>
         <div id="alerts"></div>
       </section>
 
-      <section class="card chat">
+      <section class="card chat" data-screen="chat">
         <h2>Recipient Chat (Text + Photo)</h2>
         <div id="chatLog" class="chat-log"></div>
         <form id="chatForm">
@@ -82,12 +82,31 @@
         </form>
       </section>
 
-      <section class="card settings">
+      <section class="card settings" data-screen="settings">
         <h2>Settings</h2>
         <label><input id="alertsEnabled" type="checkbox" checked /> Immediate alerts enabled</label>
         <label>Meds/task escalation minutes <input id="medTaskMins" type="number" min="1" value="15" /></label>
         <label>Note escalation minutes <input id="noteMins" type="number" min="1" value="30" /></label>
         <button id="saveSettings">Save settings</button>
+      </section>
+
+      <section class="card" data-screen="overview">
+        <h2>Import Care Plan (OCR Assist)</h2>
+        <p class="meta">Upload image for record, paste OCR text, preview parsed items, then apply.</p>
+        <form id="importForm">
+          <input id="importImage" type="file" accept="image/*" />
+          <textarea id="importText" rows="6" placeholder="Paste OCR text from schedule image"></textarea>
+          <button type="submit">Preview import</button>
+        </form>
+        <div id="importPreview"></div>
+        <button id="applyImport" type="button">Apply to timeline</button>
+      </section>
+
+      <section class="card" data-screen="settings">
+        <h2>Audit</h2>
+        <p class="meta">Local audit log for key actions.</p>
+        <button id="exportAudit" type="button">Export audit JSON</button>
+        <div id="auditCount" class="meta"></div>
       </section>
     </main>
 

@@ -3,11 +3,35 @@ import {
   validateTaskInput,
   withRole,
 } from "./core.js";
+import { parseScheduleText } from "./importer.js";
 import { runtimeConfig } from "./runtime-config.js";
 import { createDataAdapter } from "./data/index.js";
 
 const adapter = createDataAdapter(runtimeConfig);
 let state = null;
+let importPreview = [];
+
+function ensureStateDefaults(input) {
+  return {
+    ...input,
+    audit: Array.isArray(input.audit) ? input.audit : [],
+  };
+}
+
+function logAction(action, payload = {}) {
+  state.audit.push({
+    id: crypto.randomUUID(),
+    at: new Date().toISOString(),
+    role: state.role,
+    recipientId: getActiveRecipient()?.id || null,
+    action,
+    payload,
+  });
+
+  if (state.audit.length > 500) {
+    state.audit = state.audit.slice(state.audit.length - 500);
+  }
+}
 
 function getActiveRecipient() {
   return state.recipients.find((r) => r.id === state.activeRecipientId) || state.recipients[0];
@@ -24,6 +48,13 @@ function formatTime(dt) {
   return new Date(dt).toLocaleString();
 }
 
+function dateTimeFromHHMM(time) {
+  const [h, m] = (time || "00:00").split(":").map(Number);
+  const dt = new Date();
+  dt.setHours(Number.isNaN(h) ? 0 : h, Number.isNaN(m) ? 0 : m, 0, 0);
+  return dt.toISOString();
+}
+
 function renderRecipients() {
   const container = document.getElementById("recipientList");
   container.innerHTML = "";
@@ -34,6 +65,7 @@ function renderRecipients() {
     btn.textContent = r.name;
     btn.onclick = () => {
       state.activeRecipientId = r.id;
+      logAction("recipient.switch", { recipientId: r.id });
       persistAndRender();
     };
     container.appendChild(btn);
@@ -72,6 +104,7 @@ function renderTimeline() {
       task.status = "done";
       task.evidence = evidence;
       task.acknowledgedAt = new Date().toISOString();
+      logAction("task.done", { taskId: task.id, withEvidence: Boolean(note) });
       persistAndRender();
     };
 
@@ -80,6 +113,7 @@ function renderTimeline() {
     missedBtn.textContent = "Mark missed";
     missedBtn.onclick = () => {
       task.status = "missed";
+      logAction("task.missed", { taskId: task.id });
       persistAndRender();
     };
 
@@ -89,6 +123,7 @@ function renderTimeline() {
       confirmBtn.textContent = "2nd Confirm";
       confirmBtn.onclick = () => {
         task.confirmedBySecond = true;
+        logAction("task.second_confirm", { taskId: task.id });
         persistAndRender();
       };
       actions.appendChild(confirmBtn);
@@ -109,7 +144,9 @@ function renderAlerts() {
   const active = tasksForActive().filter((task) => {
     const typeMinutes = task.type === "note"
       ? Number(state.settings.escalateNotesMinutes)
-      : Number(state.settings.escalateTasksMinutes);
+      : task.type === "med"
+        ? Number(state.settings.escalateMedsMinutes)
+        : Number(state.settings.escalateTasksMinutes);
 
     return state.settings.alertsEnabled && shouldEscalate({
       isDone: task.status === "done",
@@ -140,6 +177,7 @@ function renderAlerts() {
     ack.textContent = "Acknowledge";
     ack.onclick = () => {
       task.acknowledgedAt = new Date().toISOString();
+      logAction("alert.ack", { taskId: task.id });
       persistAndRender();
     };
     row.appendChild(ack);
@@ -172,6 +210,32 @@ function renderChat() {
   });
 }
 
+function renderImportPreview() {
+  const el = document.getElementById("importPreview");
+  el.innerHTML = "";
+
+  if (!importPreview.length) {
+    el.textContent = "No preview items yet.";
+    return;
+  }
+
+  importPreview.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "import-item";
+    row.innerHTML = `<strong>${item.title}</strong><div class="meta">${item.time} | ${item.category} | ${item.type}</div>`;
+    el.appendChild(row);
+  });
+}
+
+function renderRoleScreens() {
+  const allowed = new Set(state.allowedScreens || []);
+  const sections = document.querySelectorAll("[data-screen]");
+  sections.forEach((section) => {
+    const screen = section.getAttribute("data-screen");
+    section.setAttribute("data-hidden", allowed.has(screen) ? "false" : "true");
+  });
+}
+
 async function persistAndRender() {
   await adapter.saveState(state);
   renderAll();
@@ -183,16 +247,20 @@ function renderAll() {
   document.getElementById("alertsEnabled").checked = state.settings.alertsEnabled;
   document.getElementById("medTaskMins").value = state.settings.escalateTasksMinutes;
   document.getElementById("noteMins").value = state.settings.escalateNotesMinutes;
+  document.getElementById("auditCount").textContent = `Entries: ${state.audit.length}`;
 
+  renderRoleScreens();
   renderRecipients();
   renderTimeline();
   renderAlerts();
   renderChat();
+  renderImportPreview();
 }
 
 function wireEvents() {
   document.getElementById("role").addEventListener("change", (e) => {
     state = withRole(state, e.target.value);
+    logAction("role.switch", { role: state.role });
     persistAndRender();
   });
 
@@ -206,6 +274,7 @@ function wireEvents() {
     state.recipients.push(recipient);
     state.activeRecipientId = recipient.id;
     input.value = "";
+    logAction("recipient.add", { recipientId: recipient.id });
     persistAndRender();
   });
 
@@ -227,7 +296,7 @@ function wireEvents() {
       return;
     }
 
-    state.tasks.push({
+    const created = {
       id: crypto.randomUUID(),
       ...payload,
       status: "pending",
@@ -235,7 +304,10 @@ function wireEvents() {
       evidence: null,
       acknowledgedAt: null,
       confirmedBySecond: false,
-    });
+    };
+
+    state.tasks.push(created);
+    logAction("task.add", { taskId: created.id });
     e.target.reset();
     persistAndRender();
   });
@@ -249,14 +321,16 @@ function wireEvents() {
 
     const saveMessage = (photo) => {
       if (!text && !photo) return;
-      state.chat.push({
+      const msg = {
         id: crypto.randomUUID(),
         recipientId: getActiveRecipient()?.id,
         role: state.role,
         text,
         photo: photo || null,
         createdAt: new Date().toISOString(),
-      });
+      };
+      state.chat.push(msg);
+      logAction("chat.send", { messageId: msg.id, withPhoto: Boolean(photo) });
       messageEl.value = "";
       fileEl.value = "";
       persistAndRender();
@@ -277,13 +351,64 @@ function wireEvents() {
     state.settings.escalateTasksMinutes = Number(document.getElementById("medTaskMins").value) || 15;
     state.settings.escalateMedsMinutes = state.settings.escalateTasksMinutes;
     state.settings.escalateNotesMinutes = Number(document.getElementById("noteMins").value) || 30;
+    logAction("settings.save", {
+      alertsEnabled: state.settings.alertsEnabled,
+      escalateTasksMinutes: state.settings.escalateTasksMinutes,
+      escalateNotesMinutes: state.settings.escalateNotesMinutes,
+    });
     persistAndRender();
+  });
+
+  document.getElementById("importForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = document.getElementById("importText").value;
+    importPreview = parseScheduleText(text);
+    logAction("import.preview", { count: importPreview.length });
+    renderImportPreview();
+  });
+
+  document.getElementById("applyImport").addEventListener("click", () => {
+    const rid = getActiveRecipient()?.id;
+    if (!rid || importPreview.length === 0) return;
+
+    const created = importPreview.map((item) => ({
+      id: crypto.randomUUID(),
+      recipientId: rid,
+      title: item.title,
+      category: item.category,
+      dueAt: dateTimeFromHHMM(item.time),
+      type: item.type,
+      highRisk: item.type === "med",
+      requiresSecondConfirm: item.type === "med",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      evidence: null,
+      acknowledgedAt: null,
+      confirmedBySecond: false,
+    }));
+
+    state.tasks.push(...created);
+    logAction("import.apply", { count: created.length });
+    importPreview = [];
+    document.getElementById("importText").value = "";
+    document.getElementById("importImage").value = "";
+    persistAndRender();
+  });
+
+  document.getElementById("exportAudit").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state.audit, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nurseapp-audit-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   });
 }
 
 async function init() {
   const loaded = await adapter.loadState();
-  state = withRole(loaded, loaded.role || "Family");
+  state = withRole(ensureStateDefaults(loaded), loaded.role || "Family");
   wireEvents();
   renderAll();
 }
