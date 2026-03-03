@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NurseApp MVP</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>NurseApp</h1>
+        <p>Care coordination for families and caregivers</p>
+      </div>
+      <div class="role-switch">
+        <label for="role">Role</label>
+        <select id="role">
+          <option>Family</option>
+          <option>Caregiver</option>
+          <option>Admin</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card recipients">
+        <h2>Care Recipients</h2>
+        <div id="recipientList" class="recipient-list"></div>
+        <form id="recipientForm" class="inline-form">
+          <input id="recipientName" placeholder="Add recipient name" required />
+          <button type="submit">Add</button>
+        </form>
+      </section>
+
+      <section class="card timeline">
+        <h2>Today Timeline</h2>
+        <div id="timeline"></div>
+      </section>
+
+      <section class="card form">
+        <h2>Add Plan-Driven Task</h2>
+        <form id="taskForm">
+          <label>Title <input id="taskTitle" required /></label>
+          <label>Category
+            <select id="taskCategory" required>
+              <option value="Medication">Medication</option>
+              <option value="Therapy">Therapy</option>
+              <option value="Nutrition">Nutrition</option>
+              <option value="Hygiene">Hygiene</option>
+              <option value="Mobility">Mobility</option>
+              <option value="Custom">Custom</option>
+            </select>
+          </label>
+          <label>Due time <input id="taskDueAt" type="datetime-local" required /></label>
+          <label>Type
+            <select id="taskType">
+              <option value="task">Task</option>
+              <option value="med">Medication</option>
+              <option value="note">Note</option>
+            </select>
+          </label>
+          <label>High-risk medication
+            <input id="highRisk" type="checkbox" />
+          </label>
+          <button type="submit">Save task</button>
+        </form>
+      </section>
+
+      <section class="card alerts">
+        <h2>Alerts</h2>
+        <div id="alerts"></div>
+      </section>
+
+      <section class="card chat">
+        <h2>Recipient Chat (Text + Photo)</h2>
+        <div id="chatLog" class="chat-log"></div>
+        <form id="chatForm">
+          <textarea id="chatMessage" rows="3" placeholder="Message"></textarea>
+          <input id="chatPhoto" type="file" accept="image/*" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section class="card settings">
+        <h2>Settings</h2>
+        <label><input id="alertsEnabled" type="checkbox" checked /> Immediate alerts enabled</label>
+        <label>Meds/task escalation minutes <input id="medTaskMins" type="number" min="1" value="15" /></label>
+        <label>Note escalation minutes <input id="noteMins" type="number" min="1" value="30" /></label>
+        <button id="saveSettings">Save settings</button>
+      </section>
+    </main>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>
