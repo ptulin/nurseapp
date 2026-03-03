@@ -18,5 +18,8 @@ export function createLocalAdapter() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       return true;
     },
+    async bootstrapHousehold() {
+      throw new Error("Bootstrap is available only in supabase mode");
+    },
   };
 }

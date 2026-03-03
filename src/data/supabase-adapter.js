@@ -1,9 +1,10 @@
 import { createSeedState } from "../seed.js";
+import { getSession } from "../auth/supabase-auth.js";
 
-async function request(url, anonKey, { method = "GET", body } = {}) {
+async function request(url, anonKey, { method = "GET", body, accessToken } = {}) {
   const headers = {
     apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
+    Authorization: `Bearer ${accessToken || anonKey}`,
     "Content-Type": "application/json",
   };
 
@@ -30,8 +31,9 @@ export function createSupabaseAdapter(config, localAdapter) {
     async loadState() {
       if (!url || !anonKey) return localAdapter.loadState();
       try {
+        const accessToken = getSession()?.access_token;
         const endpoint = `${url}/rest/v1/app_state_snapshots?household_id=eq.${encodeURIComponent(householdId)}&select=payload&order=updated_at.desc&limit=1`;
-        const rows = await request(endpoint, anonKey);
+        const rows = await request(endpoint, anonKey, { accessToken });
         const payload = rows?.[0]?.payload;
         return payload || createSeedState();
       } catch {
@@ -41,9 +43,11 @@ export function createSupabaseAdapter(config, localAdapter) {
     async saveState(state) {
       if (!url || !anonKey) return localAdapter.saveState(state);
       try {
+        const accessToken = getSession()?.access_token;
         const endpoint = `${url}/rest/v1/app_state_snapshots`;
         await request(endpoint, anonKey, {
           method: "POST",
+          accessToken,
           body: {
             household_id: householdId,
             payload: state,
@@ -53,6 +57,23 @@ export function createSupabaseAdapter(config, localAdapter) {
       } catch {
         return localAdapter.saveState(state);
       }
+    },
+    async bootstrapHousehold(name) {
+      if (!url || !anonKey) throw new Error("Supabase not configured");
+      const accessToken = getSession()?.access_token;
+      if (!accessToken) throw new Error("Sign in first");
+      const endpoint = `${url}/rest/v1/rpc/bootstrap_household`;
+      const result = await request(endpoint, anonKey, {
+        method: "POST",
+        accessToken,
+        body: { p_household_name: name || "My Household" },
+      });
+      if (typeof result === "string") return result;
+      if (Array.isArray(result) && result[0] && typeof result[0] === "object") {
+        return result[0].bootstrap_household || result[0].id || "";
+      }
+      if (typeof result === "object" && result) return result.bootstrap_household || result.id || "";
+      return "";
     },
   };
 }

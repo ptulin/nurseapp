@@ -14,6 +14,7 @@ Mobile-first web app for caregiver-family coordination.
 - In-app chat: text + photo
 - OCR-text import scaffold (preview and apply)
 - Local audit log with JSON export
+- Supabase auth scaffold (email/password + household bootstrap)
 - Local-first mode (no paid services required)
 
 ## Run Locally (Free)
@@ -29,6 +30,7 @@ Open `http://127.0.0.1:8788`.
 
 - `index.html`, `styles.css`, `src/app.js`: MVP UI and behavior
 - `src/core.js`: testable core rules (alerts/validation/roles)
+- `src/auth/supabase-auth.js`: lightweight Supabase auth helpers
 - `src/importer.js`: OCR-text parsing utility for schedule import
 - `src/data/*`: data adapters (`local` + `supabase` with local fallback)
 - `src/runtime-config.js`: runtime mode selection

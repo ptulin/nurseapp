@@ -14,7 +14,7 @@
 
 ## Phase 2: Cloud Foundations (Next)
 
-- [ ] Supabase auth integration
+- [x] Supabase auth integration scaffold (email/password + bootstrap RPC)
 - [x] Postgres schema + migration scripts
 - [x] Row-level security policies by role and recipient
 - [ ] Realtime updates for timeline/chat/alerts

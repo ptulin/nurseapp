@@ -6,6 +6,12 @@ import {
 import { parseScheduleText } from "./importer.js";
 import { runtimeConfig } from "./runtime-config.js";
 import { createDataAdapter } from "./data/index.js";
+import {
+  getSession,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+} from "./auth/supabase-auth.js";
 
 const adapter = createDataAdapter(runtimeConfig);
 let state = null;
@@ -53,6 +59,34 @@ function dateTimeFromHHMM(time) {
   const dt = new Date();
   dt.setHours(Number.isNaN(h) ? 0 : h, Number.isNaN(m) ? 0 : m, 0, 0);
   return dt.toISOString();
+}
+
+function setAuthStatus(message) {
+  const el = document.getElementById("authStatus");
+  if (el) el.textContent = message;
+}
+
+function readAuthInputs() {
+  return {
+    email: document.getElementById("authEmail")?.value?.trim(),
+    password: document.getElementById("authPassword")?.value || "",
+  };
+}
+
+function renderAuthStatus() {
+  if (adapter.mode !== "supabase") {
+    setAuthStatus("Auth disabled: current data mode is local.");
+    return;
+  }
+
+  const session = getSession();
+  if (!session?.access_token) {
+    setAuthStatus("Not signed in.");
+    return;
+  }
+
+  const email = session.user?.email || "authenticated";
+  setAuthStatus(`Signed in as ${email}`);
 }
 
 function renderRecipients() {
@@ -255,6 +289,7 @@ function renderAll() {
   renderAlerts();
   renderChat();
   renderImportPreview();
+  renderAuthStatus();
 }
 
 function wireEvents() {
@@ -403,6 +438,95 @@ function wireEvents() {
     a.download = `nurseapp-audit-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("signUpBtn").addEventListener("click", async () => {
+    if (adapter.mode !== "supabase") {
+      setAuthStatus("Switch runtime config to supabase mode first.");
+      return;
+    }
+    const { email, password } = readAuthInputs();
+    if (!email || !password) {
+      setAuthStatus("Email and password are required.");
+      return;
+    }
+    try {
+      await signUpWithEmail({
+        url: runtimeConfig.supabase.url,
+        anonKey: runtimeConfig.supabase.anonKey,
+        email,
+        password,
+      });
+      logAction("auth.signup", { email });
+      setAuthStatus("Sign-up successful. Check email if confirmation is required.");
+      renderAuthStatus();
+    } catch (error) {
+      setAuthStatus(`Sign-up failed: ${error.message}`);
+    }
+  });
+
+  document.getElementById("signInBtn").addEventListener("click", async () => {
+    if (adapter.mode !== "supabase") {
+      setAuthStatus("Switch runtime config to supabase mode first.");
+      return;
+    }
+    const { email, password } = readAuthInputs();
+    if (!email || !password) {
+      setAuthStatus("Email and password are required.");
+      return;
+    }
+    try {
+      await signInWithEmail({
+        url: runtimeConfig.supabase.url,
+        anonKey: runtimeConfig.supabase.anonKey,
+        email,
+        password,
+      });
+      logAction("auth.signin", { email });
+      setAuthStatus("Signed in.");
+      renderAuthStatus();
+      const loaded = await adapter.loadState();
+      state = withRole(ensureStateDefaults(loaded), loaded.role || state.role || "Family");
+      await adapter.saveState(state);
+      renderAll();
+    } catch (error) {
+      setAuthStatus(`Sign-in failed: ${error.message}`);
+    }
+  });
+
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    if (adapter.mode !== "supabase") {
+      setAuthStatus("Already local mode.");
+      return;
+    }
+    try {
+      await signOut({
+        url: runtimeConfig.supabase.url,
+        anonKey: runtimeConfig.supabase.anonKey,
+      });
+      logAction("auth.signout", {});
+      setAuthStatus("Signed out.");
+      renderAuthStatus();
+    } catch (error) {
+      setAuthStatus(`Sign-out failed: ${error.message}`);
+    }
+  });
+
+  document.getElementById("bootstrapBtn").addEventListener("click", async () => {
+    if (adapter.mode !== "supabase") {
+      setAuthStatus("Bootstrap requires supabase mode.");
+      return;
+    }
+    const name = document.getElementById("householdName")?.value?.trim() || "My Household";
+    try {
+      const householdId = await adapter.bootstrapHousehold(name);
+      runtimeConfig.supabase.householdId = householdId;
+      setAuthStatus(`Household ready: ${householdId}`);
+      logAction("auth.bootstrap_household", { householdId, householdName: name });
+      await adapter.saveState(state);
+    } catch (error) {
+      setAuthStatus(`Bootstrap failed: ${error.message}`);
+    }
   });
 }
 

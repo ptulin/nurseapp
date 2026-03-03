@@ -103,6 +103,25 @@
       </section>
 
       <section class="card" data-screen="settings">
+        <h2>Supabase Auth</h2>
+        <p class="meta">Optional. Needed for shared cloud mode with RLS.</p>
+        <form id="authForm">
+          <label>Email <input id="authEmail" type="email" placeholder="name@example.com" /></label>
+          <label>Password <input id="authPassword" type="password" placeholder="••••••••" /></label>
+          <div class="timeline-actions">
+            <button id="signUpBtn" type="button">Sign up</button>
+            <button id="signInBtn" type="button">Sign in</button>
+            <button id="signOutBtn" type="button" class="secondary">Sign out</button>
+          </div>
+          <div id="authStatus" class="meta"></div>
+        </form>
+        <form id="bootstrapForm">
+          <label>Household name <input id="householdName" placeholder="Smith Family Care" /></label>
+          <button id="bootstrapBtn" type="button">Create household + admin membership</button>
+        </form>
+      </section>
+
+      <section class="card" data-screen="settings">
         <h2>Audit</h2>
         <p class="meta">Local audit log for key actions.</p>
         <button id="exportAudit" type="button">Export audit JSON</button>
